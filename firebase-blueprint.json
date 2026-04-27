@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The user's full name" },
+        "email": { "type": "string", "format": "email", "description": "The user's email address" },
+        "phone": { "type": "string", "description": "The user's phone number" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          },
+          "description": "The user's current GPS coordinates"
+        },
+        "address": { "type": "string", "description": "The user's physical address" },
+        "role": { "type": "string", "enum": ["user", "admin"], "description": "The user's role" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the user account was created" }
+      },
+      "required": ["name", "email", "role", "createdAt"]
+    },
+    "Technician": {
+      "title": "Technician",
+      "description": "A service provider",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The technician's full name" },
+        "email": { "type": "string", "format": "email", "description": "The technician's email address" },
+        "phone": { "type": "string", "description": "The technician's phone number" },
+        "category": { "type": "string", "enum": ["electrician", "plumber", "ac", "fridge"], "description": "The technician's specialty" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" }
+          },
+          "description": "The technician's current GPS coordinates"
+        },
+        "experience": { "type": "number", "description": "Years of experience" },
+        "basePrice": { "type": "number", "description": "Base service fee" },
+        "rating": { "type": "number", "description": "Average rating" },
+        "totalJobs": { "type": "number", "description": "Total number of jobs completed" },
+        "online": { "type": "boolean", "description": "Whether the technician is currently available" },
+        "verified": { "type": "boolean", "description": "Whether the technician's documents are verified" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the technician account was created" }
+      },
+      "required": ["name", "email", "category", "online", "verified", "createdAt"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "A service booking",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The ID of the user who booked" },
+        "technicianId": { "type": "string", "description": "The ID of the technician booked" },
+        "category": { "type": "string", "description": "The service category" },
+        "date": { "type": "string", "description": "The date of the service" },
+        "time": { "type": "string", "description": "The time of the service" },
+        "address": { "type": "string", "description": "The service address" },
+        "phone": { "type": "string", "description": "The user's phone number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "completed", "cancelled"], "description": "The booking status" },
+        "price": { "type": "number", "description": "The total price" },
+        "companyFee": { "type": "number", "description": "The 10% company fee" },
+        "technicianEarnings": { "type": "number", "description": "The technician's earnings" },
+        "distance": { "type": "number", "description": "Distance between user and technician in km" },
+        "paymentStatus": { "type": "string", "enum": ["paid", "pending"], "description": "The payment status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the booking was created" }
+      },
+      "required": ["userId", "technicianId", "category", "status", "createdAt"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "A review for a technician",
+      "type": "object",
+      "properties": {
+        "bookingId": { "type": "string", "description": "The ID of the booking" },
+        "userId": { "type": "string", "description": "The ID of the user who reviewed" },
+        "technicianId": { "type": "string", "description": "The ID of the technician reviewed" },
+        "rating": { "type": "number", "description": "The rating (1-5)" },
+        "comment": { "type": "string", "description": "The review comment" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the review was created" }
+      },
+      "required": ["bookingId", "userId", "technicianId", "rating", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User profiles" },
+    "/technicians/{technicianId}": { "schema": "Technician", "description": "Technician profiles" },
+    "/bookings/{bookingId}": { "schema": "Booking", "description": "Service bookings" },
+    "/reviews/{reviewId}": { "schema": "Review", "description": "Technician reviews" }
+  }
+}

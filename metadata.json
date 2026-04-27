@@ -1,0 +1,8 @@
+{
+  "name": "FixIt Near Me",
+  "description": "Connect with local technicians for home repairs. Find electricians, plumbers, and more near you with real-time tracking and easy booking.",
+  "requestFramePermissions": [
+    "geolocation",
+    "notifications"
+  ]
+}

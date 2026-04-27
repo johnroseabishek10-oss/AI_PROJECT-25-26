@@ -1,0 +1,196 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (from Auth)
+    // Fields:
+    //   - name: string (required, 1-100 chars)
+    //   - email: string (required, valid email format)
+    //   - phone: string (optional)
+    //   - location: map { lat: number, lng: number } (optional)
+    //   - address: string (optional)
+    //   - role: string (required, 'user' or 'admin')
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: technicians
+    // Document ID: technicianId
+    // Fields:
+    //   - name: string (required, 1-100 chars)
+    //   - email: string (required, valid email format)
+    //   - phone: string (optional)
+    //   - category: string (required, enum)
+    //   - location: map { lat: number, lng: number } (required)
+    //   - experience: number (optional)
+    //   - basePrice: number (required, positive)
+    //   - rating: number (optional, 0-5)
+    //   - totalJobs: number (optional, positive)
+    //   - online: bool (required)
+    //   - verified: bool (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: bookings
+    // Document ID: bookingId
+    // Fields:
+    //   - userId: string (required, matches owner)
+    //   - technicianId: string (required)
+    //   - category: string (required)
+    //   - date: string (required)
+    //   - time: string (required)
+    //   - status: string (required, enum)
+    //   - price: number (required, positive)
+    //   - distance: number (required)
+    //   - paymentStatus: string (required, enum)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: reviews
+    // Document ID: reviewId
+    // Fields:
+    //   - bookingId: string (required)
+    //   - userId: string (required, matches owner)
+    //   - technicianId: string (required)
+    //   - rating: number (required, 1-5)
+    //   - comment: string (optional, < 500 chars)
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          (request.auth.token.email == "ramanathan2007trt@gmail.com"));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidLocation(loc) {
+      return loc is map && loc.lat is number && loc.lng is number;
+    }
+
+    function isValidUser(data) {
+      return hasRequiredFields(['name', 'email', 'role', 'createdAt']) &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             isValidEmail(data.email) &&
+             data.role in ['user', 'admin', 'technician'] &&
+             data.createdAt is timestamp &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 20)) &&
+             (!('address' in data) || (data.address is string && data.address.size() <= 500));
+    }
+
+    function isValidTechnician(data) {
+      return hasRequiredFields(['name', 'email', 'category', 'location', 'basePrice', 'online', 'verified', 'createdAt']) &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             isValidEmail(data.email) &&
+             data.category in ['electrician', 'plumber', 'ac', 'fridge'] &&
+             isValidLocation(data.location) &&
+             (!('currentLocation' in data) || isValidLocation(data.currentLocation)) &&
+             data.basePrice is number && data.basePrice >= 0 &&
+             data.online is bool &&
+             data.verified is bool &&
+             data.createdAt is timestamp &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 20));
+    }
+
+    function isValidBooking(data) {
+      return hasRequiredFields(['userId', 'technicianId', 'category', 'date', 'time', 'status', 'price', 'distance', 'paymentStatus', 'createdAt']) &&
+             data.userId is string &&
+             data.technicianId is string &&
+             data.category is string &&
+             data.date is string &&
+             data.time is string &&
+             data.status in ['pending', 'confirmed', 'completed', 'cancelled'] &&
+             data.price is number && data.price >= 0 &&
+             data.distance is number &&
+             data.paymentStatus in ['paid', 'pending'] &&
+             (!('address' in data) || (data.address is string && data.address.size() > 0 && data.address.size() <= 500)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() > 0 && data.phone.size() <= 20)) &&
+             (!('companyFee' in data) || (data.companyFee is number && data.companyFee >= 0)) &&
+             (!('technicianEarnings' in data) || (data.technicianEarnings is number && data.technicianEarnings >= 0)) &&
+             (!('paymentMethod' in data) || data.paymentMethod in ['Credit Card', 'Debit Card', 'Cash on Delivery']) &&
+             (!('isFake' in data) || data.isFake is bool) &&
+             (!('fakeReason' in data) || data.fakeReason is string) &&
+             (!('cancellationReason' in data) || data.cancellationReason is string) &&
+             (!('timeConsumed' in data) || data.timeConsumed is number) &&
+             (!('finalCost' in data) || data.finalCost is number) &&
+             (!('hasFeedback' in data) || data.hasFeedback is bool) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidReview(data) {
+      return hasRequiredFields(['bookingId', 'userId', 'technicianId', 'rating', 'createdAt']) &&
+             data.bookingId is string &&
+             data.userId is string &&
+             data.technicianId is string &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             (!('comment' in data) || (data.comment is string && data.comment.size() <= 500)) &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role in ['user', 'technician'];
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                    request.resource.data.role == resource.data.role &&
+                    request.resource.data.email == resource.data.email;
+    }
+
+    match /technicians/{technicianId} {
+      allow read: if true;
+      allow create: if (isAdmin() || (isOwner(technicianId) && request.resource.data.verified == false)) && isValidTechnician(request.resource.data);
+      allow update: if (isAdmin() || (isOwner(technicianId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentLocation', 'online']))) && isValidTechnician(request.resource.data);
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId && isValidBooking(request.resource.data);
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.technicianId || isAdmin()) && isValidBooking(request.resource.data);
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId && isValidReview(request.resource.data);
+      allow update: if isOwner(resource.data.userId) && isValidReview(request.resource.data);
+    }
+
+    match /paymentMethods/{methodId} {
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+  }
+}
